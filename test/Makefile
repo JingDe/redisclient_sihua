@@ -1,4 +1,4 @@
-
+TEST_REDIS_CLIENT_HEADER=$(wildcard ../redis_client/*.h)
 TEST_REDIS_CLIENT_SRC=$(wildcard ../redis_client/*.cpp)
 TEST_REDIS_CLIENT_OBJ=$(patsubst %.cpp, %.o, $(TEST_REDIS_CLIENT_SRC))
 
@@ -8,7 +8,6 @@ BASE_OBJ=$(patsubst %.cpp, %.o, $(BASE_SRC))
 TEST_REDIS_CLIENT_TARGET=test_redisclient
 
 CC=g++
-#CFLAGS=-g -Wall
 CXXFLAGS=-g -Wall -std=c++0x
 
 INCLUDE=-I../redis_client/ -I../ -I../third_party/include/
@@ -23,17 +22,17 @@ LDFLAGS=$(LD_PATH) $(LD_LIB)
 all: $(TEST_REDIS_CLIENT_TARGET)
 
 $(TEST_REDIS_CLIENT_TARGET): $(TEST_REDIS_CLIENT_OBJ) $(BASE_OBJ)
-	$(CC) $(CXXFLAGS) -o $(TEST_REDIS_CLIENT_TARGET) $(TEST_REDIS_CLIENT_OBJ) $(BASE_OBJ) $(INCLUDE) $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 
 # 隐含规则 ??
 
-%.o: %.cpp
+%.o: %.cpp $(TEST_REDIS_CLIENT_HEADER)
 	$(CC) $(CXXFLAGS) -c $< -o $@ $(INCLUDE)
 
 .PHONY: clean
 clean:
-	-rm $(TEST_REDIS_CLIENT_SRC)
+	-rm $(BASE_OBJ)
 	-rm $(TEST_REDIS_CLIENT_OBJ)
-
+	-rm $(TEST_REDIS_CLIENT_TARGET)
 

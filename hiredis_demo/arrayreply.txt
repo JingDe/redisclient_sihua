@@ -1,0 +1,7 @@
+*3
+$13
+sentinel01set
+$7
+member1
+$5
+norah

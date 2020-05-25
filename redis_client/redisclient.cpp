@@ -1001,7 +1001,7 @@ void* RedisClient::SubscribeSwitchMasterThreadWork(void* arg)
 				connections.swap(client->m_subscribeConnections);
 				}
 
-				for(int i=0; i<connections.size(); i++)
+				for(size_t i=0; i<connections.size(); i++)
 				{
 					if(!client->SubscribeSwitchMaster(connections[i]))
 					{

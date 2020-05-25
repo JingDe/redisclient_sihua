@@ -1,0 +1,15 @@
+*4
+$-1
+$1
+0
+*3
+*-1
+$13
+sentinel01set
++statusmsg
+*2
+:1993
+*2
+$13
+sentinel01set
+-errmsg  
