@@ -32,8 +32,6 @@ public:
 	RedisConnection* getAvailableConnection();
 	RedisConnection* getUnreleasedConnection();
 
-	bool doCommandWithParseEnhance(list < RedisCmdParaInfo >& paraList, int32_t paraLen, CommonReplyInfo& replyInfo);
-	
 	std::string GetClusterAddr() {
 		return m_clusterIp + ":" + toStr(m_clusterPort);
 	}

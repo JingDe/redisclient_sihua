@@ -120,6 +120,32 @@ char* readBytes(redisReader* r, unsigned int bytes)
 
 // ----------------------------------------------------------------------
 
+int redisReaderGrow(redisReader* r)
+{
+	redisReadTask** aux;
+	int newlen;
+
+	newlen = r->tasks + REDIS_READER_STACK_SIZE;
+	aux = static_cast<redisReadTask**>(realloc(r->task, sizeof(*r->task) * newlen));
+	if (aux == NULL)
+		goto oom;
+
+	r->task = aux;
+
+	for (; r->tasks < newlen; r->tasks++)
+	{
+		r->task[r->tasks] = static_cast<redisReadTask*>(calloc(1, sizeof(**r->task)));
+		if (r->task[r->tasks] == NULL)
+			goto oom;
+	}
+
+	return REDIS_OK;
+
+oom:
+	r->err = REDIS_ERR_PROTOCOL;
+	return REDIS_ERR;
+}
+
 
 int processLineItem(redisReader* r)
 {
@@ -128,6 +154,11 @@ int processLineItem(redisReader* r)
 	char* p;
 	int len;
 
+    if(r->ridx > r->height)
+    {   
+        r->height = r->ridx;
+    } 
+
 	if ((p = readLine(r, &len)) != NULL)
 	{
 		if (cur->type == REDIS_REPLY_INTEGER)
@@ -135,7 +166,7 @@ int processLineItem(redisReader* r)
 			if (r->fn && r->fn->createInteger)
 			{
 				long long v;
-				if (string2ll(p, len, &v) == REDIS_ERR)
+				if (string2ll_norah(p, len, &v) == REDIS_ERR)
 				{
 					r->err = REDIS_ERR_PROTOCOL;
 					return REDIS_ERR;
@@ -188,17 +219,30 @@ int processMultiBulkItem(redisReader* r)
 	long long elements;
 	int root = 0, len;
 
+//    if(r->ridx >= r->tasks-1)
+//    {
+//        LOG_DEBUG("r->ridx error: %d\n", r->ridx);
+//        r->err=REDIS_ERR_PROTOCOL;
+//        return REDIS_ERR;
+//    }
+    
+    if(r->ridx > r->height)
+    {
+        r->height = r->ridx;
+    }
+
 	// 支持树的层数大于7
-	//if (r->ridx == r->tasks - 1)
-	//{
-	//	if (redisReaderGrow(r) == REDIS_ERR)
-	//		return REDIS_ERR;
-	//}
+	if (r->ridx == r->tasks - 1)
+	{
+		if (redisReaderGrow(r) == REDIS_ERR)
+			return REDIS_ERR;
+	}
 
 	if ((p = readLine(r, &len)) != NULL)
 	{
-		if (string2ll(p, len, &elements) == REDIS_ERR)
+		if (string2ll_norah(p, len, &elements) == REDIS_ERR)
 		{
+            LOG_DEBUG("string2ll_norah parse elements failed\n");
 			r->err = REDIS_ERR_PROTOCOL;
 			return REDIS_ERR;
 		}
@@ -208,6 +252,7 @@ int processMultiBulkItem(redisReader* r)
 		//if (elements < -1 || (LLONG_MAX > SIZE_MAX  &&  elements > SIZE_MAX))
 		if(elements<-1)
 		{
+            LOG_DEBUG("elements error: %lld\n", elements);
 			r->err = REDIS_ERR_PROTOCOL;
 			return REDIS_ERR;
 		}
@@ -309,6 +354,11 @@ int processBulkItem(redisReader* r)
 	unsigned long bytelen;
 	int success = 0;
 
+    if(r->ridx > r->height)
+    {   
+        r->height = r->ridx;
+    } 
+
 	p = r->buf + r->pos;
 	s = seekNewline(p, r->len - r->pos); // s指向 \r
 	if (s != NULL)
@@ -316,13 +366,13 @@ int processBulkItem(redisReader* r)
 		p = r->buf + r->pos;
 		bytelen = s - (r->buf + r->pos) + 2; // 包括\r\n的一行的总长度
 
-		if (string2ll(p, bytelen - 2, &len) == REDIS_ERR)
+		if (string2ll_norah(p, bytelen - 2, &len) == REDIS_ERR)
 		{
 			r->err = REDIS_ERR_PROTOCOL;
 			return REDIS_ERR;
 		}
 
-		if (len < -1 || (LLONG_MAX > SIZE_MAX&& len > (long long)SIZE_MAX))
+		if (len < -1 || (LLONG_MAX > SIZE_MAX  && len > (long long)SIZE_MAX))
 		{
 			r->err = REDIS_ERR_PROTOCOL;
 			return REDIS_ERR;
@@ -401,7 +451,7 @@ int processItem(redisReader* r)
 				break;
 			default:
 				r->err = REDIS_ERR_PROTOCOL;
-				printf("error type %c\n", p[0]);
+				LOG_DEBUG("error type %c\n", p[0]);
 				return REDIS_ERR;
 			}
 		}
@@ -411,7 +461,7 @@ int processItem(redisReader* r)
 		}
 	}
 
-	printf("cur->type is %s\n", desc(cur->type).c_str());
+	LOG_DEBUG("cur->type is %s\n", desc(cur->type).c_str());
 	switch (cur->type)
 	{
 	case REDIS_REPLY_ERROR:
@@ -458,10 +508,12 @@ redisReader* redisReaderCreateWithFunctions(redisReplyObjectFunctions* fn)
 			goto oom;
 	}
 
+	r->reply = NULL;
 	r->fn = fn;
 	r->maxbuf = REDIS_READER_MAX_BUF;
-
 	r->ridx = -1;
+    r->height = 0;
+
 	return r;
 
 oom:
@@ -471,11 +523,16 @@ oom:
 
 void redisReaderFree(redisReader* r)
 {
+	LOG_DEBUG("redisReaderFree\n");
+
 	if (r == NULL)
 		return;
 
 	if (r->reply != NULL && r->fn && r->fn->freeObject)
+	{
+		//LOG_DEBUG("to free redis reply\n");
 		r->fn->freeObject(r->reply);
+	}
 
 	for (int i = 0; i < r->tasks; i++)
 		free(r->task[i]);

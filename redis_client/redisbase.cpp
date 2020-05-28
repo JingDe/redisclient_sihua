@@ -1,5 +1,7 @@
 #include "redisbase.h"
 
+#include<cassert>
+
 namespace GBDownLinker {
 
 bool createRedisCommand(list < RedisCmdParaInfo >& paraList, char** cmdString, int32_t& cmdLen)
@@ -38,126 +40,6 @@ bool createRedisCommand(list < RedisCmdParaInfo >& paraList, char** cmdString, i
 	return true;
 }
 
-bool parseRedisReply(char* replyString, RedisReplyInfo& replyInfo)
-{
-	if (replyString == NULL)
-	{
-		return false;
-	}
-	//parse first char.
-	switch (replyString[0])
-	{
-	case '-':
-		replyInfo.replyType = RedisReplyType::REDIS_REPLY_ERROR;
-		break;
-	case '+':
-		replyInfo.replyType = RedisReplyType::REDIS_REPLY_STATUS;
-		break;
-	case ':':
-		replyInfo.replyType = RedisReplyType::REDIS_REPLY_INTEGER;
-		break;
-	case '$':
-		replyInfo.replyType = RedisReplyType::REDIS_REPLY_STRING;
-		break;
-	case '*':
-		replyInfo.replyType = RedisReplyType::REDIS_REPLY_ARRAY;
-		break;
-	default:
-		replyInfo.replyType = RedisReplyType::REDIS_REPLY_UNKNOWN;
-		return false;
-	}
-	//parse status and error string
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR || replyInfo.replyType == RedisReplyType::REDIS_REPLY_STATUS)
-	{
-		char* p = strstr(replyString, "\r\n");
-		if (p == NULL)
-		{
-			return false;
-		}
-		char buf[4096];
-		memset(buf, 0, 4096);
-		memcpy(buf, replyString + 1, p - replyString - 1);
-		replyInfo.resultString = buf;
-		return true;
-	}
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER)
-	{
-		char* p = strstr(replyString, "\r\n");
-		if (p == NULL)
-		{
-			return false;
-		}
-		char buf[64];
-		memset(buf, 0, 64);
-		memcpy(buf, replyString + 1, p - replyString - 1);
-		replyInfo.intValue = atoi(buf);
-		return true;
-	}
-	bool success;
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_STRING)
-	{
-		ReplyArrayInfo arrayInfo;
-		success = parseArrayInfo(&replyString, arrayInfo);
-		if (success)
-			replyInfo.arrayList.push_back(arrayInfo);
-		return success;
-	}
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ARRAY)
-	{
-		//first check array num
-		char* p = strstr(replyString, "\r\n");
-		if (p == NULL)
-		{
-			return false;
-		}
-		char buf[64];
-		memset(buf, 0, 64);
-		memcpy(buf, replyString + 1, p - replyString - 1);
-		int arrayNum = atoi(buf);
-		for (int i = 0; i < arrayNum; i++)
-		{
-			char* arrayString = p + 2;
-			ReplyArrayInfo arrayInfo;
-			success = parseArrayInfo(&arrayString, arrayInfo);
-			if (success)
-				replyInfo.arrayList.push_back(arrayInfo);
-			else
-				return false;
-		}
-	}
-	return true;
-}
-
-bool parseArrayInfo(char** arrayString, ReplyArrayInfo& arrayInfo)
-{
-	char* string = *arrayString;
-	if (strncmp(string, "$", 1) != 0)
-	{
-		return false;
-	}
-	char* p = strstr(string, "\r\n");
-	if (p == NULL)
-	{
-		return false;
-	}
-	//first parse length
-	char buf[128];
-	memset(buf, 0, 128);
-	memcpy(buf, string + 1, p - string - 1);
-	arrayInfo.arrayLen = atoi(buf);
-	if (arrayInfo.arrayLen == -1)
-	{
-		arrayInfo.replyType = RedisReplyType::REDIS_REPLY_NIL;
-		*arrayString = p + 2;
-		return true;
-	}
-	arrayInfo.replyType = RedisReplyType::REDIS_REPLY_STRING;
-	arrayInfo.arrayValue = (char*)malloc(arrayInfo.arrayLen);
-	memcpy(arrayInfo.arrayValue, p + 2, arrayInfo.arrayLen);
-	*arrayString = p + 2 + arrayInfo.arrayLen + 2;
-	return true;
-}
-
 std::ostream& operator<<(std::ostream& os, WaitReadEventResult result)
 {
 	switch(result)
@@ -176,6 +58,150 @@ std::ostream& operator<<(std::ostream& os, WaitReadEventResult result)
 		break;
 	}
 	return os;
+}
+
+RedisReply* createReplyObject(int type)
+{
+	RedisReply* r = (RedisReply*)calloc(1, sizeof(*r));
+
+	if (r == NULL)
+		return NULL;
+
+	//	LOG_DEBUG("DEBUG createReplyObject type: %d pointer: %p\n", type, r);
+
+	r->type = type;
+	return r;
+}
+
+
+void freeReplyObject(RedisReply* reply)
+{
+	//LOG_DEBUG("freeReplyObject %p\n", reply);
+
+	RedisReply* r = static_cast<RedisReply*>(reply);
+	std::size_t j;
+
+	if (r == NULL)
+		return;
+
+	switch (r->type)
+	{
+	case REDIS_REPLY_INTEGER:
+	case REDIS_REPLY_NIL:
+		break;
+	case REDIS_REPLY_ARRAY:
+		if (r->element != NULL)
+		{
+			for (j = 0; j < r->elements; j++)
+			{
+				freeReplyObject(r->element[j]);
+			}
+			free(r->element);
+		}
+		break;
+	case REDIS_REPLY_STATUS:
+	case REDIS_REPLY_ERROR:
+	case REDIS_REPLY_STRING:
+		free(r->str);
+		break;
+	}
+	free(r);
+}
+
+RedisReply* createIntegerObject(const RedisReadTask* task, long long value)
+{
+	RedisReply* r, * parent;
+
+	r = createReplyObject(REDIS_REPLY_INTEGER);
+	if (r == NULL)
+		return NULL;
+
+	r->integer = value;
+	if (task->parent)
+	{
+		parent = static_cast<RedisReply*>(task->parent->obj);
+		assert(parent->type == REDIS_REPLY_ARRAY);
+		parent->element[task->idx] = r;
+	}
+	return r;
+}
+
+RedisReply* createNilObject(const RedisReadTask* task)
+{
+	RedisReply* r, * parent;
+
+	r = createReplyObject(REDIS_REPLY_NIL);
+	if (r == NULL)
+		return NULL;
+
+	if (task->parent)
+	{
+		parent = static_cast<RedisReply*>(task->parent->obj);
+		assert(parent->type == REDIS_REPLY_ARRAY);
+		parent->element[task->idx] = r;
+	}
+	return r;
+}
+
+RedisReply* createStringObject(const RedisReadTask* task, char* str, size_t len)
+{
+	RedisReply* r, * parent;
+	char* buf;
+
+	r = createReplyObject(task->type);
+	if (r == NULL)
+		return NULL;
+
+	buf = (char*)malloc(len + 1);
+	if (buf == NULL)
+	{
+		freeReplyObject(r);
+		return NULL;
+	}
+
+	assert(task->type == REDIS_REPLY_ERROR || task->type == REDIS_REPLY_STATUS || task->type == REDIS_REPLY_STRING);
+
+	memcpy(buf, str, len);
+	buf[len] = '\0';
+	r->str = buf;
+	r->len = len;
+
+	if (task->parent)
+	{
+		parent = static_cast<RedisReply*>(task->parent->obj);
+		assert(parent->type == REDIS_REPLY_ARRAY);
+		parent->element[task->idx] = r;
+	}
+	return r;
+}
+
+RedisReply* createArrayObject(const RedisReadTask* task, size_t elements)
+{
+	RedisReply* r, * parent;
+
+	r = createReplyObject(task->type);
+	if (r == NULL)
+		return NULL;
+
+	if (elements > 0)
+	{
+		r->element = reinterpret_cast<RedisReply**>(calloc(elements, sizeof(RedisReply*)));
+		if (r->element == NULL)
+		{
+			freeReplyObject(r);
+			return NULL;
+		}
+	}
+
+	r->elements = elements;
+
+	if (task->parent)
+	{
+		parent = static_cast<RedisReply*>(task->parent->obj);
+		assert(parent->type == REDIS_REPLY_ARRAY);
+		parent->element[task->idx] = r;
+	}
+	return r;
 }
 
 } // namespace GBDownLinker

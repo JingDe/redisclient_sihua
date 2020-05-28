@@ -16,20 +16,14 @@ using namespace std;
 
 namespace GBDownLinker {
 
-struct RedisReplyType
-{
-	enum {
-		REDIS_REPLY_UNKNOWN = 0,
-		REDIS_REPLY_NIL,
-		REDIS_REPLY_ERROR,
-		REDIS_REPLY_STATUS,
-		REDIS_REPLY_INTEGER,
-		REDIS_REPLY_STRING, // 5
-		REDIS_REPLY_ARRAY, 	// 6
-
-		// TODO for parseEnance
-		REDIS_REPLY_MULTI_ARRRY,
-	};
+enum {
+	REDIS_REPLY_UNKNOWN = 0,
+	REDIS_REPLY_NIL,		// 1
+	REDIS_REPLY_ERROR,		// 2
+	REDIS_REPLY_STATUS,		// 3
+	REDIS_REPLY_INTEGER,	// 4
+	REDIS_REPLY_STRING,		// 5
+	REDIS_REPLY_ARRAY, 		// 6
 };
 
 typedef struct RedisCmdParaInfoTag
@@ -49,7 +43,7 @@ typedef struct ReplyArrayInfoTag
 	//need release mem by user.
 	ReplyArrayInfoTag()
 	{
-		replyType = RedisReplyType::REDIS_REPLY_UNKNOWN;
+		replyType = REDIS_REPLY_UNKNOWN;
 		arrayValue = NULL;
 		arrayLen = 0;
 	}
@@ -62,7 +56,7 @@ typedef struct RedisReplyInfoTag
 {
 	RedisReplyInfoTag()
 	{
-		replyType = RedisReplyType::REDIS_REPLY_UNKNOWN;
+		replyType = REDIS_REPLY_UNKNOWN;
 		resultString.clear();
 		intValue = 0;
 		arrayList.clear();
@@ -73,91 +67,43 @@ typedef struct RedisReplyInfoTag
 	list<ReplyArrayInfo> arrayList;
 }RedisReplyInfo;
 
+// 参考 hiredis
+typedef struct RedisReply {
+	int type; // 回复类型
+	long long integer;
+	double dval;
+	size_t len; // 
+	char* str;
 
-/* for parseEnhanch, 更通用、全面的解析resp协议reply */
+	std::size_t elements;
+	struct RedisReply** element;
+} RedisReply;
 
-// 沿用 ReplyArrayInfo
-//struct ArrayElem{
-//	int elem_type;
-//	string elem_value;
-//};
-//typedef vector<ArrayElem> Array;
-typedef vector<ReplyArrayInfo> Array;
+typedef struct RedisReadTask {
+	int type; // 当前解析节点对应回复节点的类型
+	int elements; // 子节点个数
+	int idx; // 当前节点在父节点儿子节点中的索引
+	void* obj; // 对应的回复节点
+	struct RedisReadTask* parent;
+	void* privdata;
+} RedisReadTask;
 
-//struct ReplyInfo{
-//	// 返回一条成功或者失败消息
-//	// 返回一个整数的命令
-//	// 返回一个对象，一个string对象。get
-//	// 返回一个数组。 smembers, sentinel master,
-//	// 返回一个整数，和一个数组。  scan
-//	// 返回多个数组。 sentinel salves,
-//	
-//	int code; // 成功或者失败
-//	string msg; // 失败msg
-//	int num; // 
-//	string entity; // string表示的对象
-//	vector<Array> arrays;
-//
-//	// 记录parse过程中的中间状态
-//	int arrays_size; // 获取arrays的大小
-//	int cur_array_pos; // 当前解析的第几个Array
-//	int cur_array_size; // 获取当前解析的Array的大小
-//};
+// 创建和释放RedisReply节点的函数，参考hiredis
+typedef struct RedisReplyObjectFunctions {
+	RedisReply* (*createString)(const RedisReadTask*, char*, size_t);
+	RedisReply* (*createArray)(const RedisReadTask*, size_t);
+	RedisReply* (*createInteger)(const RedisReadTask*, long long);
+	RedisReply* (*createNil)(const RedisReadTask*);
 
-struct CommonReplyInfo {
-	int replyType;
-	string resultString;
-	int intValue;
+	void (*freeObject)(RedisReply*);
+} RedisReplyObjectFunctions;
 
-	//	list<ReplyArrayInfo> arrayList; // 返回一个string对象时，存储在第一个元素
-	vector<Array> arrays; // 返回一个string对象时，存储在第一个Array的第一个元素
-
-	// 记录parse过程中的中间状态
-	int arrays_size; // 获取arrays的大小
-	int cur_array_pos; // 当前解析的第几个Array
-	int cur_array_size; // 获取当前解析的Array的大小
-};
-
-struct CommonReplyInfo2 {
-	int replyType;
-	string resultString;
-	int intValue;
-
-	// 方法一：
-//	 vector<void*> arrays;
-//	 arrays存储的元素类型可以不同，可以是int*, string*, vector<ReplyArrayInfo>*
-//	 不可行，原因：存储到array之后不知道原始类型是什么指针.
-//	struct ElemType{
-//		int pointerType;
-//		void* value;
-//	};
-//	vector<ElemType*> arrays;
-
-
-	// 方法二：
-	// vector<vector<void*> > arrays; 
-	// int*,string*存储在vector<void*> arrays[x]中
-	// vector<void*> arrays[x], 也可以作为vector<ReplyArrayInfo*>类型
-	// 问题：不能确定void*真正类型。
-	struct ElemType1 {
-		int pointerType;
-		vector<void*> vec;
-	};
-	vector<ElemType1> arrays;
-
-	// 或者
-//	struct ElemType2{
-//		int pointerType;
-//		void* value;
-//	}; 
-//	vector<vector<ElemType2> > arrays;
-
-
-	// 记录parse过程中的中间状态
-	int arrays_size; // 获取arrays的大小
-	int cur_array_pos; // 当前解析的第几个Array
-	int cur_array_size; // 获取当前解析的Array的大小
-};
+RedisReply* createReplyObject(int type);
+RedisReply* createIntegerObject(const RedisReadTask* task, long long value);
+RedisReply* createNilObject(const RedisReadTask* task);
+RedisReply* createStringObject(const RedisReadTask* task, char* str, size_t len);
+RedisReply* createArrayObject(const RedisReadTask* task, size_t elements);
+void freeReplyObject(RedisReply* reply);
 
 enum class DoRedisCmdResultType : uint8_t {
 	Success=0,
@@ -193,8 +139,7 @@ enum class WaitReadEventResult : uint8_t {
 std::ostream& operator<<(std::ostream& os, WaitReadEventResult result);
 
 bool createRedisCommand(list<RedisCmdParaInfo>& paraList, char** cmdString, int32_t& cmdLen);
-bool parseRedisReply(char* replyString, RedisReplyInfo& replyInfo);
-bool parseArrayInfo(char** arrayString, ReplyArrayInfo& arrayInfo);
+
 
 } // namespace GBDownLinker
 

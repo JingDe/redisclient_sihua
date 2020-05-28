@@ -134,6 +134,8 @@ RedisClient::RedisClient()
 	m_callback(DefaultCallback)
 {
 	LOG_WRITE_INFO("construct RedisClient ok");
+
+
 }
 
 RedisClient::~RedisClient()
@@ -381,7 +383,7 @@ bool RedisClient::getRedisClusterNodes()
 			freeCommandList(paraList);
 			continue;
 		}
-		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+		if (replyInfo.replyType == REDIS_REPLY_ERROR)
 		{
 			std::stringstream log_msg;
 			log_msg << "recv redis error response:[" << replyInfo.resultString << "].";
@@ -392,7 +394,7 @@ bool RedisClient::getRedisClusterNodes()
 			freeCommandList(paraList);
 			return false;
 		}
-		if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STRING)
+		if (replyInfo.replyType != REDIS_REPLY_STRING)
 		{
 			std::stringstream log_msg;
 			log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -773,13 +775,13 @@ bool RedisClient::ParseSentinelCkquorumReply(const RedisReplyInfo& replyInfo)
 //	log_msg << "sentinel ckquorum command has replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
 //	LOG_WRITE_INFO(log_msg.str());
 
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		LOG_WRITE_ERROR("ckquorum command reply error");
 		return false;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+	if (replyInfo.replyType != REDIS_REPLY_STATUS)
 	{
 		std::stringstream log_msg;
 		log_msg << "ckquorum failed, redis response:[" << replyInfo.resultString << "].";
@@ -1189,13 +1191,13 @@ bool RedisClient::ParseSwithMasterMessage(const RedisReplyInfo& replyInfo, Redis
 	log_msg << "channel +switch-master has message, replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
 	LOG_WRITE_INFO(log_msg.str());
 
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		LOG_WRITE_ERROR("get error reply.");
 		return false;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		std::stringstream log_msg;
 		log_msg << "get non-array reply: " << replyInfo.resultString;
@@ -1215,7 +1217,7 @@ bool RedisClient::ParseSwithMasterMessage(const RedisReplyInfo& replyInfo, Redis
 		//		log_msg<<"arrayList has replyType "<<(*arrayIter).replyType<<", arrayValue "<<arrayIter->arrayValue<<", arrayLen "<<arrayIter->arrayLen;
 		//		LOG_WRITE_INFO(log_msg.str());
 
-		if ((*arrayIter).replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if ((*arrayIter).replyType == REDIS_REPLY_STRING)
 		{
 			string message = (*arrayIter).arrayValue;
 
@@ -1249,13 +1251,13 @@ bool RedisClient::ParseSubsribeSwitchMasterReply(const RedisReplyInfo& replyInfo
 	log_msg << "subscribe +switch-master has replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
 	LOG_WRITE_INFO(log_msg.str());
 
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		LOG_WRITE_ERROR("get error reply.");
 		return false;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		std::stringstream log_msg;
 		log_msg << "get non-array reply: " << replyInfo.resultString;
@@ -1278,7 +1280,7 @@ bool RedisClient::ParseSubsribeSwitchMasterReply(const RedisReplyInfo& replyInfo
 		//		log_msg << "arrayList has replyType " << (*arrayIter).replyType << ", arrayValue " << arrayIter->arrayValue << ", arrayLen " << arrayIter->arrayLen;
 		//		LOG_WRITE_INFO(log_msg.str());
 
-		if ((*arrayIter).replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if ((*arrayIter).replyType == REDIS_REPLY_STRING)
 		{
 			string message = (*arrayIter).arrayValue;
 
@@ -1401,7 +1403,7 @@ DoRedisCmdResultType RedisClient::CheckPingPong(RedisCluster* cluster)
 
 DoRedisCmdResultType RedisClient::ParsePingReply(const RedisReplyInfo& replyInfo)
 {
-    if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+    if (replyInfo.replyType == REDIS_REPLY_ERROR)
     {
 		std::string noauthMsg="NOAUTH";
         int minLen=std::min(replyInfo.resultString.size(), noauthMsg.size());
@@ -1416,7 +1418,7 @@ DoRedisCmdResultType RedisClient::ParsePingReply(const RedisReplyInfo& replyInfo
 			return DoRedisCmdResultType::Fail;
 		}
     }
-    if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+    if (replyInfo.replyType != REDIS_REPLY_STATUS)
     {
         std::stringstream log_msg;
         log_msg << "ping failed, redis response:[" << replyInfo.resultString << "].";
@@ -1650,13 +1652,13 @@ bool RedisClient::ParseSentinelGetMasterReply(const RedisReplyInfo& replyInfo, R
 	//log_msg << "sentinel get-master-addr-by-name command has replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
 	//LOG_WRITE_INFO(log_msg.str());
 
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		LOG_WRITE_ERROR("get master : get empty list or set.");
 		return false;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		log_msg.str("");
 		log_msg << "get master : recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -1682,91 +1684,6 @@ bool RedisClient::ParseSentinelGetMasterReply(const RedisReplyInfo& replyInfo, R
 	return true;
 }
 
-
-bool RedisClient::SentinelGetSlavesInfo(RedisCluster* cluster, vector<RedisServerInfo>& slavesAddr)
-{
-	list<RedisCmdParaInfo> paraList;
-	int32_t paraLen = 0;
-	string cmd1 = "sentinel";
-	fillCommandPara(cmd1.c_str(), cmd1.size(), paraList);
-	paraLen += cmd1.size() + 10;
-	string cmd2 = "slaves";
-	fillCommandPara(cmd2.c_str(), cmd2.size(), paraList);
-	paraLen += cmd2.size() + 10;
-	fillCommandPara(m_masterName.c_str(), m_masterName.length(), paraList);
-	paraLen += m_masterName.length() + 20;
-
-	CommonReplyInfo replyInfo;
-	bool success = cluster->doCommandWithParseEnhance(paraList, paraLen, replyInfo);
-	freeCommandList(paraList);
-	if (!success)
-	{
-		LOG_WRITE_ERROR("do sentinel slaves cmd failed");
-		return false;
-	}
-
-	if (!ParseSentinelSlavesReply(replyInfo, slavesAddr))
-	{
-		freeReplyInfo(replyInfo);
-		return false;
-	}
-	else
-	{
-		freeReplyInfo(replyInfo);
-		return true;
-	}
-}
-
-bool RedisClient::ParseSentinelSlavesReply(const CommonReplyInfo& replyInfo, vector<RedisServerInfo>& slavesInfo)
-{
-	std::stringstream log_msg;
-	log_msg << "sentinel slalves command has replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
-	LOG_WRITE_INFO(log_msg.str());
-
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
-	{
-		LOG_WRITE_WARNING("get empty list or set.");
-		return false;
-	}
-
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_MULTI_ARRRY)
-	{
-		std::stringstream log_msg;
-		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
-		LOG_WRITE_ERROR(log_msg.str());
-		return false;
-	}
-
-	string ip = "ip";
-	string port = "port";
-	for (size_t i = 0; i < replyInfo.arrays.size(); i++)
-	{
-		for (size_t j = 0; j < replyInfo.arrays[i].size(); j++)
-		{
-			if (replyInfo.arrays[i][j].replyType == RedisReplyType::REDIS_REPLY_STRING)
-			{
-				string message = replyInfo.arrays[i][j].arrayValue;
-
-				if (strcmp(message.c_str(), ip.c_str()) == 0 && j + 3 < replyInfo.arrays[i].size())
-				{
-					string message2 = replyInfo.arrays[i][j + 2].arrayValue;
-					if (strcmp(message2.c_str(), port.c_str()) != 0)
-						break;
-					RedisServerInfo addr;
-					addr.serverIp = replyInfo.arrays[i][j + 1].arrayValue;
-					addr.serverPort = atoi(replyInfo.arrays[i][j + 3].arrayValue);
-					std::stringstream log_msg;
-					log_msg << "get slave addr: " << addr.serverIp << ", " << addr.serverPort;
-					LOG_WRITE_INFO(log_msg.str());
-					slavesInfo.push_back(addr);
-					break;
-				}
-			}
-		}
-	}
-
-	return true;
-}
 
 bool RedisClient::MasterGetReplicationSlavesInfo(RedisCluster* cluster, vector<RedisServerInfo>& slaves)
 {
@@ -1806,13 +1723,13 @@ bool RedisClient::ParseInfoReplicationReply(const RedisReplyInfo& replyInfo, vec
 	log_msg << "info replication has replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
 	LOG_WRITE_INFO(log_msg.str());
 
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		LOG_WRITE_ERROR("get empty list or set.");
 		return false;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STRING)
+	if (replyInfo.replyType != REDIS_REPLY_STRING)
 	{
 		log_msg.str("");
 		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -1826,7 +1743,7 @@ bool RedisClient::ParseInfoReplicationReply(const RedisReplyInfo& replyInfo, vec
 		return false;
 	}
 	list<ReplyArrayInfo>::const_iterator iter = replyInfo.arrayList.begin();
-	if ((*iter).replyType != RedisReplyType::REDIS_REPLY_STRING || (*iter).arrayLen == 0)
+	if ((*iter).replyType != REDIS_REPLY_STRING || (*iter).arrayLen == 0)
 	{
 		log_msg.str("");
 		log_msg << "arraylist is wrong, replyType:[" << (*iter).replyType << "], arrayLen:[" << (*iter).arrayLen << "].";
@@ -1938,7 +1855,7 @@ bool RedisClient::AuthPasswd(const string& passwd, RedisCluster* cluster)
 
 bool RedisClient::ParseAuthReply(const RedisReplyInfo& replyInfo)
 {
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+	if (replyInfo.replyType != REDIS_REPLY_STATUS)
 	{
 		std::stringstream log_msg;
 		log_msg << "auth passwd failed, redis response:[" << replyInfo.resultString << "].";
@@ -1954,7 +1871,7 @@ bool RedisClient::CheckIfNoAuth(const RedisReplyInfo& replyInfo)
 //    log_msg << "master node replyInfo has replyType " << replyInfo.replyType << ", resultString " << replyInfo.resultString << ", intValue " << replyInfo.intValue;
 //    LOG_WRITE_INFO(log_msg.str());
 
-	if(replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if(replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		std::string noauthMsg="NOAUTH";
 		int minLen=std::min(replyInfo.resultString.size(), noauthMsg.size());
@@ -2968,7 +2885,7 @@ bool RedisClient::getRedisClustersByCommand(REDIS_CLUSTER_MAP& clusterMap)
 			LOG_WRITE_WARNING("do get cluster nodes failed.");
 			continue;
 		}
-		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+		if (replyInfo.replyType == REDIS_REPLY_ERROR)
 		{
 			std::stringstream log_msg;
 			log_msg << "recv redis error response:[" << replyInfo.resultString << "].";
@@ -2977,7 +2894,7 @@ bool RedisClient::getRedisClustersByCommand(REDIS_CLUSTER_MAP& clusterMap)
 			freeCommandList(paraList);
 			return false;
 		}
-		if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STRING)
+		if (replyInfo.replyType != REDIS_REPLY_STRING)
 		{
 			std::stringstream log_msg;
 			log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -3144,7 +3061,7 @@ bool RedisClient::parseClusterInfo(RedisReplyInfo& replyInfo, REDIS_CLUSTER_MAP&
 		LOG_WRITE_ERROR("reply not have array info.");
 		return false;
 	}
-	if ((*iter).replyType != RedisReplyType::REDIS_REPLY_STRING || (*iter).arrayLen == 0)
+	if ((*iter).replyType != REDIS_REPLY_STRING || (*iter).arrayLen == 0)
 	{
 		std::stringstream log_msg;
 		log_msg << "parse cluster info failed.redis reply info is wrong,replyType:[" << (*iter).replyType << "], arrayLen:[" << (*iter).arrayLen << "].";
@@ -3335,7 +3252,7 @@ bool RedisClient::checkIfNeedRedirect(RedisReplyInfo& replyInfo, bool& needRedir
 	{
 		return false;
 	}
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		std::stringstream log_msg;
 		log_msg << "recv redis error response:[" << replyInfo.resultString << "].";
@@ -3370,7 +3287,7 @@ DoRedisCmdResultType RedisClient::parseFindReply(RedisReplyInfo& replyInfo, bool
 		LOG_WRITE_WARNING(log_msg.str());
 		return DoRedisCmdResultType::Redirected;
 	}
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_INTEGER   && replyInfo.intValue == 0)
+	if (replyInfo.replyType != REDIS_REPLY_INTEGER   && replyInfo.intValue == 0)
 	{
 		return DoRedisCmdResultType::NotFound;
 	}
@@ -3387,7 +3304,7 @@ DoRedisCmdResultType RedisClient::parseSetSerialReply(RedisReplyInfo& replyInfo,
 		LOG_WRITE_WARNING(log_msg.str());
 		return DoRedisCmdResultType::Redirected;
 	}
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+	if (replyInfo.replyType != REDIS_REPLY_STATUS)
 	{
 		std::stringstream log_msg;
 		log_msg << "set serial failed, redis response:[" << replyInfo.resultString << "].";
@@ -3401,7 +3318,7 @@ bool RedisClient::parseScanKeysReply(RedisReplyInfo& replyInfo, list<string>& ke
 {
 	retCursor = -1;
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		std::stringstream log_msg;
 		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -3417,7 +3334,7 @@ bool RedisClient::parseScanKeysReply(RedisReplyInfo& replyInfo, list<string>& ke
 		log_msg << "arrayList has replyType " << (*arrayIter).replyType << ", arrayValue " << arrayIter->arrayValue << ", arrayLen " << arrayIter->arrayLen;
 		LOG_WRITE_INFO(log_msg.str());
 
-		if ((*arrayIter).replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if ((*arrayIter).replyType == REDIS_REPLY_STRING)
 		{
 			string key = (*arrayIter).arrayValue;
 			keys.push_back(key);
@@ -3432,13 +3349,13 @@ bool RedisClient::parseKeysCommandReply(RedisReplyInfo& replyInfo, list < string
 //		log_msg<<"keys replyInfo has replyType "<<replyInfo.replyType<<", resultString "<<replyInfo.resultString<<", intValue "<<replyInfo.intValue;
 //		LOG_WRITE_INFO(log_msg.str());
 
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ERROR)
+	if (replyInfo.replyType == REDIS_REPLY_ERROR)
 	{
 		LOG_WRITE_INFO("get empty list or set.");
 		return true;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		std::stringstream log_msg;
 		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -3449,7 +3366,7 @@ bool RedisClient::parseKeysCommandReply(RedisReplyInfo& replyInfo, list < string
 	list<ReplyArrayInfo>::iterator arrayIter;
 	for (arrayIter = replyInfo.arrayList.begin(); arrayIter != replyInfo.arrayList.end(); arrayIter++)
 	{
-		if ((*arrayIter).replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if ((*arrayIter).replyType == REDIS_REPLY_STRING)
 		{
 			string key = (*arrayIter).arrayValue;
 //			LOG_WRITE_INFO(key);
@@ -3469,7 +3386,7 @@ bool RedisClient::parseStatusResponseReply(RedisReplyInfo& replyInfo, bool& need
 		LOG_WRITE_WARNING(log_msg.str());
 		return true;
 	}
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+	if (replyInfo.replyType != REDIS_REPLY_STATUS)
 	{
 		std::stringstream log_msg;
 		log_msg << "status response failed, redis response:[" << replyInfo.resultString << "].";
@@ -3489,7 +3406,7 @@ bool RedisClient::parseExecReply(RedisReplyInfo& replyInfo, bool& needRedirect, 
 		return true;
 	}
 
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		std::stringstream log_msg;
 		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -3497,7 +3414,7 @@ bool RedisClient::parseExecReply(RedisReplyInfo& replyInfo, bool& needRedirect, 
 		return false;
 	}
 	//parse exec reply
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ARRAY && replyInfo.intValue == -1)
+	if (replyInfo.replyType == REDIS_REPLY_ARRAY && replyInfo.intValue == -1)
 	{
 		LOG_WRITE_ERROR("exec reply -1,set serial exec failed.");
 		return false;
@@ -3506,7 +3423,7 @@ bool RedisClient::parseExecReply(RedisReplyInfo& replyInfo, bool& needRedirect, 
 	list<ReplyArrayInfo>::iterator arrayIter;
 	for (arrayIter = replyInfo.arrayList.begin(); arrayIter != replyInfo.arrayList.end(); arrayIter++)
 	{
-		if ((*arrayIter).replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if ((*arrayIter).replyType == REDIS_REPLY_STRING)
 		{
 			if (strncmp((*arrayIter).arrayValue, "-", 1) == 0 || strncmp((*arrayIter).arrayValue, ":0", 2) == 0)
 			{
@@ -3535,22 +3452,6 @@ void RedisClient::freeReplyInfo(RedisReplyInfo& replyInfo)
 		}
 		replyInfo.arrayList.clear();
 	}
-}
-
-void RedisClient::freeReplyInfo(CommonReplyInfo& replyInfo)
-{
-	for (size_t i = 0; i < replyInfo.arrays.size(); i++)
-	{
-		for (size_t j = 0; j < replyInfo.arrays[i].size(); j++)
-		{
-			if (replyInfo.arrays[i][j].arrayValue != NULL)
-			{
-				free(replyInfo.arrays[i][j].arrayValue);
-				replyInfo.arrays[i][j].arrayValue = NULL;
-			}
-		}
-	}
-	replyInfo.arrays.clear();
 }
 
 
@@ -4095,7 +3996,7 @@ bool RedisClient::doTransactionCommandInConnection(int32_t commandLen, list<Redi
 //for watch,unwatch,multi,discard command response.
 bool RedisClient::parseStatusResponseReply(RedisReplyInfo& replyInfo)
 {
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+	if (replyInfo.replyType != REDIS_REPLY_STATUS)
 	{
 		//		std::stringstream log_msg;
 		//		log_msg<<"status response failed, redis response:["<<replyInfo.resultString<<"].";
@@ -4108,7 +4009,7 @@ bool RedisClient::parseStatusResponseReply(RedisReplyInfo& replyInfo)
 //for queued command in a transaction
 bool RedisClient::parseQueuedResponseReply(RedisReplyInfo& replyInfo)
 {
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STATUS)
+	if (replyInfo.replyType != REDIS_REPLY_STATUS)
 	{
 		return false;
 	}
@@ -4117,12 +4018,12 @@ bool RedisClient::parseQueuedResponseReply(RedisReplyInfo& replyInfo)
 
 bool RedisClient::parseExecReply(RedisReplyInfo& replyInfo)
 {
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_NIL)
+	if (replyInfo.replyType == REDIS_REPLY_NIL)
 	{
 		LOG_WRITE_ERROR("transaction interrupted: nil");
 		return false;
 	}
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_ARRAY)
+	if (replyInfo.replyType != REDIS_REPLY_ARRAY)
 	{
 		std::stringstream log_msg;
 		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -4130,7 +4031,7 @@ bool RedisClient::parseExecReply(RedisReplyInfo& replyInfo)
 		return false;
 	}
 	// empty array
-	if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_ARRAY && replyInfo.intValue == -1)
+	if (replyInfo.replyType == REDIS_REPLY_ARRAY && replyInfo.intValue == -1)
 	{
 		LOG_WRITE_ERROR("exec reply -1, set serial exec failed.");
 		return false;
@@ -4139,7 +4040,7 @@ bool RedisClient::parseExecReply(RedisReplyInfo& replyInfo)
 	list<ReplyArrayInfo>::iterator arrayIter;
 	for (arrayIter = replyInfo.arrayList.begin(); arrayIter != replyInfo.arrayList.end(); arrayIter++)
 	{
-		if ((*arrayIter).replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if ((*arrayIter).replyType == REDIS_REPLY_STRING)
 		{
 			// error type
 			if (strncmp((*arrayIter).arrayValue, "-", 1) == 0)

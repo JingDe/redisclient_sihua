@@ -1,38 +1,47 @@
-TEST_REDIS_CLIENT_HEADER=$(wildcard ../redis_client/*.h)
-TEST_REDIS_CLIENT_SRC=$(wildcard ../redis_client/*.cpp)
-TEST_REDIS_CLIENT_OBJ=$(patsubst %.cpp, %.o, $(TEST_REDIS_CLIENT_SRC))
 
-BASE_SRC=$(wildcard ../base_library/*.cpp)
-BASE_OBJ=$(patsubst %.cpp, %.o, $(BASE_SRC))
+test_redisclient_demo=test_redisclient.cpp
 
-TEST_REDIS_CLIENT_TARGET=test_redisclient
+test_redisclient_header:=$(wildcard ../redis_client/*.h)
+test_redisclient_src:=$(wildcard ../redis_client/*.cpp) $(test_redisclient_demo)
+test_redisclient_obj:=$(patsubst %.cpp, %.o, $(test_redisclient_src))
+
+base_src:=$(wildcard ../base_library/*.cpp)
+base_obj:=$(patsubst %.cpp, %.o, $(base_src))
+
+test_redisclient_target=test_redisclient
 
 CC=g++
-CXXFLAGS=-g -Wall -std=c++0x
+cxxflags=-g -Wall -std=c++0x
 
-INCLUDE=-I../redis_client/ -I../ -I../third_party/include/
-LIB=../third_party/lib/
+include=-I../redis_client/ -I../third_party/include/ -I../base_library/ -I../
+lib=../third_party/lib/
 
-LD_PATH=$(addprefix -L, $(LIB))
-LD_LIB=-lglog -lpthread -lrt
-LDFLAGS=$(LD_PATH) $(LD_LIB)
+ld_path=$(addprefix -L, $(lib))
+ld_lib=-lglog -lpthread -lrt
+ldflags=$(ld_path) $(ld_lib)
 
 
 .PHONY: all
-all: $(TEST_REDIS_CLIENT_TARGET)
+all: $(test_redisclient_target)
 
-$(TEST_REDIS_CLIENT_TARGET): $(TEST_REDIS_CLIENT_OBJ) $(BASE_OBJ)
-	$(CC) -o $@ $^ $(LDFLAGS)
+$(test_redisclient_target): $(test_redisclient_obj) $(base_obj)
+	$(CC) -o $@ $^ $(ldflags)
+
+%.o: %.cpp
+	$(CC) -c $< -o $@ $(cxxflags) $(include)
 
 
-# 隐含规则 ??
+%.o: %.cpp %.h
+	$(CC) -c $< -o $@ $(cxxflags) $(include)
 
-%.o: %.cpp $(TEST_REDIS_CLIENT_HEADER)
-	$(CC) $(CXXFLAGS) -c $< -o $@ $(INCLUDE)
+.PHONY: debug
+debug:
+	echo $(test_redisclient_src)
+	echo $(test_redisclient_obj)
 
 .PHONY: clean
 clean:
-	-rm $(BASE_OBJ)
-	-rm $(TEST_REDIS_CLIENT_OBJ)
-	-rm $(TEST_REDIS_CLIENT_TARGET)
+	-rm $(base_obj)
+	-rm $(test_redisclient_obj)
+	-rm $(test_redisclient_target)
 

@@ -5,7 +5,7 @@
 #include<string>
 
 #define REDIS_READER_MAX_BUF (1024*16)  /* Default max unused reader buffer. */
-#define REDIS_READER_STACK_SIZE 9
+#define REDIS_READER_STACK_SIZE 9 
 
 enum RedisReplyType {
 	REDIS_REPLY_ERROR = 1,
@@ -16,15 +16,14 @@ enum RedisReplyType {
 	REDIS_REPLY_ARRAY,
 };
 
-
 typedef struct redisReply {
 	int type; // 回复类型
 	long long integer;
 	double dval;
-	size_t len;
+	size_t len; // str指向的字符串的长度，不包括末尾的\0
 	char* str;
 
-	std::size_t elements;
+	std::size_t elements; // element数组的长度
 	struct redisReply** element;
 } redisReply;
 
@@ -59,6 +58,7 @@ typedef struct redisReader {
 	redisReadTask** task;
 	int tasks; // task的长度
 	int ridx; // 当前解析到第几层
+    int height; // 解析树的高度
 	void* reply; // 存储最终解析结果的根节点?
 
 	redisReplyObjectFunctions* fn; // 解析基本类型的方法
@@ -67,7 +67,6 @@ typedef struct redisReader {
 
 
 std::string desc(int type);
-
 
 redisReader* redisReaderCreateWithFunctions(redisReplyObjectFunctions* fn);
 void redisReaderFree(redisReader* r);
@@ -81,5 +80,6 @@ int processLineItem(redisReader* r);
 int processMultiBulkItem(redisReader* r);
 int processBulkItem(redisReader* r);
 
+int redisReaderGrow(redisReader* r);
 
 #endif

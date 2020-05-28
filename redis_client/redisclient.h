@@ -26,6 +26,8 @@ namespace GBDownLinker {
 #define REDIS_DEFALUT_SERVER_PORT 6379
 #define REDIS_SLOT_NUM 16384
 
+#define default_connect_timeout_ms  1500
+#define default_read_timeout_ms     3000
 
 class RedisConnection;
 class RedisMonitor;
@@ -234,9 +236,12 @@ public:
 	RedisMode GetRedisMode() {
 		return m_redisMode;
 	}
-	bool init(const string& serverIp, uint32_t serverPort, uint32_t connectionNum, uint32_t connectTimeout = 1200, uint32_t read_timeout_ms = 3000, const string& passwd = "");
-	bool init(const REDIS_SERVER_LIST& clusterList, uint32_t connectionNum, uint32_t connectTimeout = 1200, uint32_t read_timeout_ms = 3000, const string& passwd = "");
-	bool init(const REDIS_SERVER_LIST& sentinelList, const string& masterName, uint32_t connectionNum, uint32_t connectTimeout = 1200, uint32_t read_timeout_ms = 3000, const string& passwd = "");
+    // standalone mode
+	bool init(const string& serverIp, uint32_t serverPort, uint32_t connectionNum, uint32_t connectTimeout = default_connect_timeout_ms, uint32_t read_timeout_ms = default_read_timeout_ms, const string& passwd = "");
+    // cluster mode
+	bool init(const REDIS_SERVER_LIST& clusterList, uint32_t connectionNum, uint32_t connectTimeout = default_connect_timeout_ms, uint32_t read_timeout_ms = default_read_timeout_ms, const string& passwd = "");
+    // sentinel mode
+	bool init(const REDIS_SERVER_LIST& sentinelList, const string& masterName, uint32_t connectionNum, uint32_t connectTimeout = default_connect_timeout_ms, uint32_t read_timeout_ms = default_read_timeout_ms, const string& passwd = "");
 	RedisClientInitResult init(RedisMode redis_mode, const REDIS_SERVER_LIST& serverList, const string& masterName, uint32_t connectionNum, uint32_t connectTimeout, uint32_t readTimeout, const string& passwd);
 	void SetCallback(const StatusChangedCallback& callback);
 	
@@ -309,8 +314,6 @@ public:
 
 	// debug test
 	void DoTestOfSentinelSlavesCommand();
-	bool SentinelGetSlavesInfo(RedisCluster* cluster, vector<RedisServerInfo>& slavesAddr);
-	bool ParseSentinelSlavesReply(const CommonReplyInfo& replyInfo, vector<RedisServerInfo>& slavesInfo);
 
 	static void fillCommandPara(const char* paraValue, int32_t paraLen, list<RedisCmdParaInfo>& paraList, bool verboseLog=true);
 	static bool ParseAuthReply(const RedisReplyInfo& replyInfo);
@@ -341,8 +344,6 @@ private:
 	bool parseExecReply(RedisReplyInfo& replyInfo, bool& needRedirect, string& redirectInfo);
 	bool parseScanKeysReply(RedisReplyInfo& replyInfo, list<string>& keys, int& retCursor);
 	bool parseKeysCommandReply(RedisReplyInfo& replyInfo, list<string>& keys);
-
-	void freeReplyInfo(CommonReplyInfo& replyInfo);
 
 	void fillScanCommandPara(int cursor, const string& queryKey, int count, list<RedisCmdParaInfo>& paraList, int32_t& paraLen, ScanMode scanMode);
 
@@ -497,7 +498,7 @@ private:
 
 	// internal status check and report
 	RedisClientStatus m_workStatus;
-	StatusChangedCallback m_callback;
+	StatusChangedCallback m_callback;	
 }; // class RedisClient
 
 
@@ -687,13 +688,13 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //			return false;
 //		}
 //		//find
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		//not find
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			std::stringstream log_msg;
 //			log_msg << "not find key:" << key << " in redis db";
@@ -712,13 +713,13 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //			return false;
 //		}
 //		//del success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		//del failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			std::stringstream log_msg;
 //			log_msg << "del key:" << key << " from redis db failed.";
@@ -737,13 +738,13 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //			return false;
 //		}
 //		//set expire success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		//set expire failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			std::stringstream log_msg;
 //			log_msg << "set key:" << key << " expire failed.";
@@ -762,13 +763,13 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //			return false;
 //		}
 //		// success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		// failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			std::stringstream log_msg;
 //			log_msg << "zset key:" << key << " add done,maybe exists.";
@@ -787,13 +788,13 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //			return false;
 //		}
 //		// success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		// failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			std::stringstream log_msg;
 //			log_msg << "set key:" << key << " zrem failed.";
@@ -804,7 +805,7 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //
 //		break;
 	case RedisCommandType::REDIS_COMMAND_ZINCRBY:
-		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_STRING)
+		if (replyInfo.replyType == REDIS_REPLY_STRING)
 		{
 			freeReplyInfo(replyInfo);
 			return DoRedisCmdResultType::Success;
@@ -832,13 +833,13 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //			return false;
 //		}
 //		// success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue > 0)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue > 0)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		// failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			std::stringstream log_msg;
 //			log_msg << "set key:" << key << " zremrangebyscore failed.";
@@ -862,7 +863,7 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 	//		freeReplyInfo(replyInfo);
 	//		return DoRedisCmdResultType::Fail;
 	//	}
-		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER)
+		if (replyInfo.replyType == REDIS_REPLY_INTEGER)
 		{
 			if (count)
 				*count = replyInfo.intValue;
@@ -884,7 +885,7 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 //		break;
 	case RedisCommandType::REDIS_COMMAND_ZSCORE:
 	{
-		if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STRING)
+		if (replyInfo.replyType != REDIS_REPLY_STRING)
 		{
 			std::stringstream log_msg;
 			log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "]";
@@ -901,7 +902,7 @@ DoRedisCmdResultType RedisClient::ParseRedisReplyForStandAloneAndMasterMode(
 			freeReplyInfo(replyInfo);
 			return DoRedisCmdResultType::NotFound;
 		}
-		if ((*iter).replyType == RedisReplyType::REDIS_REPLY_NIL)
+		if ((*iter).replyType == REDIS_REPLY_NIL)
 		{
 			std::stringstream log_msg;
 			log_msg << "get failed,the key not exist.";
@@ -1158,13 +1159,13 @@ REDIS_COMMAND:
 //			return false;
 //		}
 //		//find
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		//not find
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			log_msg.str("");
 //			log_msg << "not find key:" << key << " in redis db";
@@ -1183,13 +1184,13 @@ REDIS_COMMAND:
 //			return false;
 //		}
 //		//del success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		//del failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			log_msg.str("");
 //			log_msg << "del key:" << key << " from redis db failed.";
@@ -1208,13 +1209,13 @@ REDIS_COMMAND:
 //			return false;
 //		}
 //		//set expire success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		//set expire failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			log_msg.str("");
 //			log_msg << "set key:" << key << " expire failed.";
@@ -1233,13 +1234,13 @@ REDIS_COMMAND:
 //			return false;
 //		}
 //		// success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		// failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			log_msg.str("");
 //			log_msg << "zset key:" << key << " add done,maybe exists.";
@@ -1258,13 +1259,13 @@ REDIS_COMMAND:
 //			return false;
 //		}
 //		// success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 1)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		// failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			log_msg.str("");
 //			log_msg << "set key:" << key << " zrem failed.";
@@ -1284,7 +1285,7 @@ REDIS_COMMAND:
 		else
 		{
 			// success
-			if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_STRING)
+			if (replyInfo.replyType == REDIS_REPLY_STRING)
 			{
 				freeReplyInfo(replyInfo);
 				return DoRedisCmdResultType::Success;
@@ -1311,13 +1312,13 @@ REDIS_COMMAND:
 //			return false;
 //		}
 //		// success
-//		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue > 0)
+//		if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue > 0)
 //		{
 //			freeReplyInfo(replyInfo);
 //			return true;
 //		}
 //		// failed
-//		else if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
+//		else if (replyInfo.replyType == REDIS_REPLY_INTEGER && replyInfo.intValue == 0)
 //		{
 //			log_msg.str("");
 //			log_msg << "set key:" << key << " zremrangebyscore failed.";
@@ -1342,7 +1343,7 @@ REDIS_COMMAND:
 //			return DoRedisCmdResultType::Fail;
 //		}
 
-		if (replyInfo.replyType == RedisReplyType::REDIS_REPLY_INTEGER)
+		if (replyInfo.replyType == REDIS_REPLY_INTEGER)
 		{
 			if (count)
 				*count = replyInfo.intValue;
@@ -1364,7 +1365,7 @@ REDIS_COMMAND:
 		}
 		else
 		{
-			if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STRING)
+			if (replyInfo.replyType != REDIS_REPLY_STRING)
 			{
 				log_msg.str("");
 				log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -1379,7 +1380,7 @@ REDIS_COMMAND:
 				freeReplyInfo(replyInfo);
 				return DoRedisCmdResultType::NotFound;
 			}
-			if ((*iter).replyType == RedisReplyType::REDIS_REPLY_NIL)
+			if ((*iter).replyType == REDIS_REPLY_NIL)
 			{
 				LOG_WRITE_WARNING("get failed,the key not exist.");
 				freeReplyInfo(replyInfo);
@@ -1455,7 +1456,7 @@ DoRedisCmdResultType RedisClient::parseGetSerialReply(RedisReplyInfo& replyInfo,
 		LOG_WRITE_INFO(log_msg.str());
 		return DoRedisCmdResultType::Redirected;
 	}
-	if (replyInfo.replyType != RedisReplyType::REDIS_REPLY_STRING)
+	if (replyInfo.replyType != REDIS_REPLY_STRING)
 	{
 		std::stringstream log_msg;
 		log_msg << "recv redis wrong reply type:[" << replyInfo.replyType << "].";
@@ -1468,7 +1469,7 @@ DoRedisCmdResultType RedisClient::parseGetSerialReply(RedisReplyInfo& replyInfo,
 		LOG_WRITE_ERROR("reply not have array info.");
 		return DoRedisCmdResultType::NotFound;
 	}
-	if ((*iter).replyType == RedisReplyType::REDIS_REPLY_NIL)
+	if ((*iter).replyType == REDIS_REPLY_NIL)
 	{
 		LOG_WRITE_ERROR("get failed,the key not exist.");
 		return DoRedisCmdResultType::NotFound;

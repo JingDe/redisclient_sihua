@@ -114,36 +114,6 @@ bool RedisCluster::checkIfCanFree()
 	return findFree;
 }
 
-
-bool RedisCluster::doCommandWithParseEnhance(list < RedisCmdParaInfo >& paraList, int32_t paraLen, CommonReplyInfo& replyInfo)
-{
-	bool success = false;
-	RedisConnection* connection = getAvailableConnection();
-	if (connection != NULL)
-	{
-		success = connection->doCommandWithParseEnhance(paraList, paraLen, replyInfo);
-		releaseConnection(connection);
-	}
-	else
-	{
-		LOG_WRITE_INFO("no available connection, new one");
-		connection = new RedisConnection(m_clusterIp, m_clusterPort, m_connectTimeout, m_readTimeout, m_passwd);
-		if (connection == NULL)
-			return false;
-		if (!connection->connect())
-		{
-			delete connection;
-			return false;
-		}
-		success = connection->doCommandWithParseEnhance(paraList, paraLen, replyInfo);
-		connection->close();
-		delete connection;
-		connection = NULL;
-	}
-	return success;
-}
-
-
 bool RedisCluster::doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_t paraLen, RedisReplyInfo& replyInfo, RedisConnection::ReplyParserType parserType)
 {
 	bool success = false;

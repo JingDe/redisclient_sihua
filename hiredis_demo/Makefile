@@ -20,10 +20,11 @@ all: $(hiredis_demo_target)
 $(hiredis_demo_target): $(hiredis_demo_obj) 
 	$(CC) -o $@ $^
 
-%.o:%.c
+%.o:%.c %.h
 	$(CC) -c $< -o $@ $(CXXFLAGS)
 
 .PHONY: clean
+clean:
 	-rm $(hiredis_demo_obj)
 	-rm $(hiredis_demo_target)
 

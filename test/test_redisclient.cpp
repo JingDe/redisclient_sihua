@@ -1,6 +1,6 @@
 #include"redisclient.h"
 
-#include"log/log.h"
+#include"base_library/log.h"
 
 #include<string>
 #include<cstdint>
@@ -30,7 +30,7 @@ int main()
 	std::string passwd = "";
 	uint32_t master_connection_num = 2;
 
-	RedisClientInitResult init_result = client->init(SENTINEL_MODE, redis_server_list, master_name, master_connection_num, connect_timeout_ms, read_timeout_ms, passwd);
+	RedisClientInitResult init_result = client.init(SENTINEL_MODE, redis_server_list, master_name, master_connection_num, connect_timeout_ms, read_timeout_ms, passwd);
 	if(init_result!=InitSuccess)
 	{
 		return -1;

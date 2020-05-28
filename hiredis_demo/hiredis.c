@@ -1,4 +1,5 @@
 #include"hiredis.h"
+#include"util.h"
 #include"read.h"
 #include"sds.h"
 
@@ -16,6 +17,8 @@ static redisReply* createReplyObject(int type)
 
 	if (r == NULL)
 		return NULL;
+	
+//	LOG_DEBUG("DEBUG createReplyObject type: %d pointer: %p\n", type, r);
 
 	r->type = type;
 	return r;
@@ -24,8 +27,10 @@ static redisReply* createReplyObject(int type)
 
 void freeReplyObject(void* reply)
 {
+	//LOG_DEBUG("freeReplyObject %p\n", reply);
+
 	redisReply* r = static_cast<redisReply*>(reply);
-	size_t j;
+	std::size_t j;
 
 	if (r == NULL)
 		return;
@@ -173,13 +178,24 @@ int redisGetReply(redisContext* c, void** reply)
 	{
 		// 从redis连接中读取回复，每次最多读取一块固定大小的数据，拷贝到 redisReader的buffer中
 		if (redisBufferRead(c) == REDIS_ERR)
-			return REDIS_ERR;
+	    {
+            LOG_DEBUG("read reply failed: %d, %d\n", c->reader->err, c->err);
+    		return REDIS_ERR;
+        }
 
 		// 调用redisReader继续解析数据
 		//if (redisGetReplyFromReader(c, &aux) == REDIS_ERR)
 		if (redisReaderGetReply(c->reader, &aux) == REDIS_ERR)
-			return REDIS_ERR;
+		{
+            LOG_DEBUG("parse err: %d, %d\n", c->reader->err, c->err);
+            return REDIS_ERR;
+        }
 	} while (aux == NULL);
+
+    if(aux != NULL)
+    {
+        LOG_DEBUG("reply tree level: %d\n", c->reader->height);
+    }
 
 	if (reply != NULL)
 	{
@@ -202,11 +218,11 @@ int redisBufferRead(redisContext* c)
 
 	// 从套接字中读取数据
 	nread = c->read(buf, sizeof(buf));
-	printf("read return %d bytes\n", nread);
+	LOG_DEBUG("read return %d bytes\n", nread);
 	if (nread > 0)
 	{
 		buf[nread] = 0;
-		printf("read data: [%s]\n", buf);
+		LOG_DEBUG("read data: [%s]\n", buf);
 
 		// 将读取的数据，追加到redisReader的输入缓存中来解析
 		if (redisReaderFeed(c->reader, buf, nread) != REDIS_OK)
@@ -329,9 +345,6 @@ int redisReaderGetReply(redisReader* r, void** reply)
 
 	return REDIS_OK;
 }
-
-
-
 
 // test
 ssize_t redisContext::read(char* buf, size_t len)
