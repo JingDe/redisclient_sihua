@@ -3,8 +3,9 @@
 
 #include<cstddef>
 
-int string2ll(char* s, std::size_t slen, long long* value);
+namespace GBDownLinker {
 
+int string2ll(char* s, std::size_t slen, long long* value);
 int string2ll_norah(char* s, std::size_t slen, long long* value);
 
 #ifndef NDEBUG
@@ -12,5 +13,7 @@ int string2ll_norah(char* s, std::size_t slen, long long* value);
 #else
 #define LOG_DEBUG(fmt, ...)
 #endif
+
+}
 
 #endif

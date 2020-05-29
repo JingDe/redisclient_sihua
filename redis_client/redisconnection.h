@@ -13,10 +13,10 @@ using namespace std;
 
 namespace GBDownLinker {
 
-enum RedisStatus {
-    REDIS_OK=0,
-    REDIS_ERR=-1,
-};
+//enum RedisStatus {
+//    REDIS_OK=0,
+//    REDIS_ERR=-1,
+//};
 
 enum RedisErrorType {
     REDIS_ERR_OK=0,
@@ -55,9 +55,8 @@ public:
 	RedisConnection(const string serverIp, uint32_t serverPort, uint32_t connectTimeout, uint32_t readTimeout, const std::string& passwd);
 	~RedisConnection();
 	bool connect();
-	//	bool doRedisCommand(list<RedisCmdParaInfo> &paraList, int32_t paraLen, RedisReplyInfo& replyInfo, ParseFunction parser=NULL);
 	bool doRedisCommand(list<RedisCmdParaInfo>& paraList, int32_t paraLen, RedisReplyInfo& replyInfo, ReplyParserType parserType = COMMON_PARSER);
-	bool doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_t paraLen, RedisReply& reply);
+	bool doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_t paraLen, RedisReply** reply);
 	
 	bool close();
 	
@@ -95,9 +94,9 @@ private:
 	bool initReader();
 	bool freeReader();
 
-    bool getReply(RedisReply& reply);
-    int redisBufferRead();
-    int readReply(char*, size_t);
+    bool GetReply(RedisReply** reply);
+    int RedisBufferRead();
+    int ReadReply(char*, size_t);
     int RedisReaderGetReply(RedisReader*, RedisReply**);
     int RedisReaderGrow(RedisReader* r);
     int RedisReaderFeed(RedisReader* r, const char* buf, size_t len);

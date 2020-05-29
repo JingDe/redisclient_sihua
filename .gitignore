@@ -35,3 +35,5 @@
 .swp
 
 demohiredis
+test_redisclient
+test_redisclient.log*

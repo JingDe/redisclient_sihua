@@ -538,7 +538,9 @@ bool RedisClient::initSentinels()
 			if (SentinelGetMasterAddrByName(sentinelHandler.clusterHandler, m_initMasterAddr)
 				&& CheckMasterRole(m_initMasterAddr))
 			{
-				LOG_WRITE_INFO("got init master addr");
+				std::stringstream log_msg;
+				log_msg<<"got init master addr: "<<m_initMasterAddr.serverIp<<", "<<m_initMasterAddr.serverPort;
+				LOG_WRITE_INFO(log_msg.str());
 				m_initMasterAddrGot = true;
 			}
 		}
@@ -718,8 +720,12 @@ void* RedisClient::SentinelHealthCheckTask(void* arg)
 			MutexLockGuard guard(&(client->m_lockCheckMasterSignalQueue));
 			if (client->m_checkMasterSignalQueue.empty())
 			{
+				if(client->m_forceSentinelHealthCheckThreadExit)
+                    break;
 				client->m_condCheckMasterSignalQueue.WaitForSeconds(40);
 			}
+			if(client->m_forceSentinelHealthCheckThreadExit)
+                break;
 			if (!client->m_checkMasterSignalQueue.empty()) // notified and remove the notification
 			{
 				client->m_checkMasterSignalQueue=std::move(std::queue<int>());
@@ -1555,6 +1561,7 @@ bool RedisClient::StopSentinelThreads()
 	if (m_sentinelHealthCheckThreadStarted)
 	{
 		m_forceSentinelHealthCheckThreadExit = true;
+		SignalToDoMasterCheck(); // wakeup thread
 		::pthread_join(m_sentinelHealthCheckThreadId, NULL);
 		
 		m_sentinelHealthCheckThreadStarted=false;
@@ -4138,5 +4145,121 @@ bool RedisClient::Srem(RedisConnection* con, const string& setKey, const string&
 	return success;
 }
 
+static void PrintRedisReplyPre(RedisReply* reply, int depth=0)
+{
+	char buf[1024];
+	int buflen=1024;
+
+	RedisReply* r = static_cast<RedisReply*>(reply);
+	switch (r->type)
+	{
+	case REDIS_REPLY_ERROR:
+		snprintf(buf, buflen-1, "%*serr: %s", depth, "", r->str);
+		LOG_WRITE_INFO(buf);
+		break;
+	case REDIS_REPLY_STATUS:
+		snprintf(buf, buflen-1, "%*sstatus: %s", depth, "", r->str);
+		LOG_WRITE_INFO(buf);
+		break;
+	case REDIS_REPLY_STRING:
+		snprintf(buf, buflen-1, "%*sstring: %s", depth, "", r->str);
+		LOG_WRITE_INFO(buf);
+		break;
+	case REDIS_REPLY_NIL:
+		snprintf(buf, buflen-1, "%*snil", depth, "");
+		LOG_WRITE_INFO(buf);
+		break;
+	case REDIS_REPLY_INTEGER:
+		snprintf(buf, buflen-1, "%*sinteger: %lld", depth, "", r->integer);
+		LOG_WRITE_INFO(buf);
+		break;
+	case REDIS_REPLY_ARRAY:
+		snprintf(buf, buflen-1, "%*sarray: elements %zd", depth, "", r->elements);
+		LOG_WRITE_INFO(buf);
+		for (std::size_t i = 0; i < r->elements; ++i)
+		{
+			RedisReply* c = r->element[i];
+			PrintRedisReplyPre(c, depth+2);
+		}
+		break;
+	default:
+		snprintf(buf, buflen-1, "error type: %d", r->type);
+		LOG_WRITE_INFO(buf);
+		break;
+	}
+	return;
+}
+
+bool RedisClient::TestHiredisGetReply()
+{
+	LOG_WRITE_INFO("TestHiredisGetReply");
+
+	if(m_redisMode != SENTINEL_MODE)
+		return false;
+
+	RedisProxyInfo& masterNode = m_dataNodes[m_masterClusterId];
+    if (masterNode.clusterHandler == NULL || masterNode.isAlived == false)
+    {    
+        std::stringstream log_msg;
+        log_msg << "master node " << m_masterClusterId << " not alive";
+        LOG_WRITE_ERROR(log_msg.str());
+        if(!CreateConnectionPool(masterNode, m_passwd))
+        {    
+			LOG_WRITE_ERROR("CreateConnectionPool failed");
+			return false;
+        }    
+    } 
+
+	RedisConnection* con = masterNode.clusterHandler->getUnreleasedConnection();	
+	if(con==false)
+	{
+		LOG_WRITE_INFO("cannot get connection");
+		return false;
+	}
+
+	// 1 test with different command
+	list<RedisCmdParaInfo> paraList;
+	int32_t paraLen;
+	RedisReply* reply=NULL;
+	bool res;
+
+	// 1.1 scan 0 COUNT 10
+	fillScanCommandPara(0, "", 10, paraList, paraLen, SCAN_NOLOOP);
+	res = con->doRedisCommand(paraList, paraLen, &reply);
+	if(res)
+	{
+		PrintRedisReplyPre(reply, 0);		
+		freeReplyObject(reply);
+	}
+	else
+	{
+		LOG_WRITE_ERROR("parse scan command reply failed");
+	}
+	freeCommandList(paraList);
+
+	// 1.2 set
+
+	// 1.3 get
+
+	// 1.4 keys *	
+	fillCommandPara("keys", 4, paraList);
+    paraLen += 15;
+    string key = "*"; 
+    fillCommandPara(key.c_str(), key.length(), paraList);
+    paraLen += key.length() + 20;
+	res = con->doRedisCommand(paraList, paraLen, &reply);
+	if(res)
+    {
+        PrintRedisReplyPre(reply, 0);
+        freeReplyObject(reply);
+    }
+    else
+    {
+        LOG_WRITE_ERROR("parse scan command reply failed");
+    }
+    freeCommandList(paraList);
+
+	return true;
+}
 
 } // namespace GBDownLinker 

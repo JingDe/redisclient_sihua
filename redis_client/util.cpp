@@ -1,7 +1,9 @@
 #include"util.h"
-#include"hiredis.h"
+#include"redisbase.h"
 
 #include<climits>
+
+namespace GBDownLinker {
 
 int string2ll_norah(char* s, std::size_t slen, long long* value)
 {
@@ -109,4 +111,6 @@ int string2ll(char* s, std::size_t slen, long long* value)
 			*value = v;
 	}
 	return REDIS_OK;
+}
+
 }

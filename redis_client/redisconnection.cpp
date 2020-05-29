@@ -14,7 +14,6 @@
 
 namespace GBDownLinker {
 
-typedef bool (*ParseFunction)(void* parseBuf, int32_t parseLen, RedisReplyInfo& replyInfo);
 
 RedisReplyObjectFunctions RedisConnection::defaultFunctions = {
     createStringObject,
@@ -133,6 +132,9 @@ bool RedisConnection::initReader()
     if (m_reader->buf == NULL)
         goto oom;
 
+	m_reader->pos=0;
+	m_reader->len=0;
+
     m_reader->task = (RedisReadTask**)calloc(REDIS_READER_STACK_SIZE, sizeof(*m_reader->task));
     // RedisReadTask** task;  r->task是RedisReadTask**类型，*r->task是RedisReadTask*类型
     // 分配 一个RedisReadTask*类型大小的内存，返回的是 RedisReadTask**指针类型
@@ -140,7 +142,7 @@ bool RedisConnection::initReader()
     if (m_reader->task == NULL)
         goto oom;
 
-    for (; m_reader->tasks < REDIS_READER_STACK_SIZE; m_reader->tasks++)
+    for (m_reader->tasks=0; m_reader->tasks < REDIS_READER_STACK_SIZE; m_reader->tasks++)
     {
         m_reader->task[m_reader->tasks] = (RedisReadTask*)calloc(1, sizeof(**m_reader->task));
         // **r->task是RedisReadTask类型，
@@ -164,7 +166,9 @@ oom:
 
 bool RedisConnection::resetReader()
 {
+	// free
     freeReader();
+	// re-init
     return initReader();
 }
 
@@ -203,7 +207,7 @@ bool RedisConnection::doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_
     return recv(replyInfo, parserType);
 }
 
-bool RedisConnection::doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_t paraLen, RedisReply& replyInfo)
+bool RedisConnection::doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_t paraLen, RedisReply** replyInfo)
 {
     if (m_reader == NULL || !resetReader())
     {
@@ -241,7 +245,7 @@ bool RedisConnection::doRedisCommand(list < RedisCmdParaInfo >& paraList, int32_
     free(commandBuf);
     commandBuf = NULL;
 
-    bool res = getReply(replyInfo);
+    bool res = GetReply(replyInfo);
     return res;
 }
 
@@ -268,16 +272,18 @@ ConnectionStatus RedisConnection::CheckConnected()
     }
 }
 
-bool RedisConnection::getReply(RedisReply& reply)
+bool RedisConnection::GetReply(RedisReply** reply)
 {
     std::stringstream log_msg;
-
-    RedisReply* aux = NULL;
+	
+	if(reply!=NULL)
+		*reply=NULL;
+    RedisReply* aux = NULL; // 获取reply的根节点指针
 
     do
     {
         // 从redis连接中读取回复，每次最多读取一块固定大小的数据，拷贝到 RedisReader的buffer中
-        if (redisBufferRead() == REDIS_ERR)
+        if (RedisBufferRead() == REDIS_ERR)
         {
             log_msg<<"read reply failed: "<<m_reader->err;
             LOG_WRITE_ERROR(log_msg.str());
@@ -299,12 +305,12 @@ bool RedisConnection::getReply(RedisReply& reply)
         log_msg<<"get reply ok, reply tree level: "<<m_reader->height;
         LOG_WRITE_INFO(log_msg.str());
 
-        reply = *aux;
+        *reply = aux;
     }
     return true;
 }
 
-int RedisConnection::redisBufferRead()
+int RedisConnection::RedisBufferRead()
 {
     std::stringstream log_msg;
 
@@ -312,7 +318,7 @@ int RedisConnection::redisBufferRead()
     int nread;
 
     // 从套接字中读取数据
-    nread = readReply(buf, sizeof(buf)-1);
+    nread = ReadReply(buf, sizeof(buf)-1);
     log_msg<<"read return "<<nread<<"bytes";
     LOG_WRITE_INFO(log_msg.str());
 
@@ -344,7 +350,7 @@ int RedisConnection::redisBufferRead()
     return REDIS_OK;
 }
 
-int RedisConnection::readReply(char* buf, std::size_t len)
+int RedisConnection::ReadReply(char* buf, std::size_t len)
 {
     int recvLen = m_socket.read(buf, len, m_readTimeout);
     return recvLen;

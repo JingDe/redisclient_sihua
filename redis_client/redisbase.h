@@ -16,6 +16,12 @@ using namespace std;
 
 namespace GBDownLinker {
 
+enum RedisStatus {
+    REDIS_OK=0,
+    REDIS_ERR=-1,
+};
+
+
 enum {
 	REDIS_REPLY_UNKNOWN = 0,
 	REDIS_REPLY_NIL,		// 1

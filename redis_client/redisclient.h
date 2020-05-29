@@ -323,6 +323,8 @@ public:
 	bool NotifyToSubscribeSwitchMaster(RedisCluster* cluster);
 	bool StartSubscribeSwitchMasterTask();
 
+	bool TestHiredisGetReply();
+
 private:
 	bool getClusterIdFromRedirectReply(const string& redirectInfo, string& clusterId);
 	bool getRedisClusterNodes();
@@ -428,6 +430,7 @@ private:
 	
 	DoRedisCmdResultType CheckPingPong(RedisCluster* cluster);
 	DoRedisCmdResultType ParsePingReply(const RedisReplyInfo& replyInfo);
+
 
 private:
 	// for all RedisMode

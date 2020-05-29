@@ -36,6 +36,8 @@ int main()
 		return -1;
 	}
 
+	client.TestHiredisGetReply();
+
 	LOG_WRITE_INFO("RedisClient init success");
 	
 	return 0;
