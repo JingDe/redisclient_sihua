@@ -5,6 +5,8 @@
 #include<string>
 #include<cstdint>
 
+#include<unistd.h>
+
 using namespace GBDownLinker;
 
 int main()
@@ -36,7 +38,16 @@ int main()
 		return -1;
 	}
 
+	
+	// test case 1
 	client.TestHiredisGetReply();
+
+	// test case 2
+	while(true)
+	{
+		LOG_WRITE_INFO("loop, to test subscribe +switch-master");
+		sleep(20);
+	}
 
 	LOG_WRITE_INFO("RedisClient init success");
 	

@@ -32,7 +32,7 @@
 *.app
 
 .vs
-.swp
+*.swp
 
 demohiredis
 test_redisclient

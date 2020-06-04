@@ -4219,45 +4219,92 @@ bool RedisClient::TestHiredisGetReply()
 
 	// 1 test with different command
 	list<RedisCmdParaInfo> paraList;
-	int32_t paraLen;
+	int32_t paraLen=0;
 	RedisReply* reply=NULL;
-	bool res;
+	bool res=false;
 
 	// 1.1 scan 0 COUNT 10
-	fillScanCommandPara(0, "", 10, paraList, paraLen, SCAN_NOLOOP);
-	res = con->doRedisCommand(paraList, paraLen, &reply);
-	if(res)
 	{
-		PrintRedisReplyPre(reply, 0);		
-		freeReplyObject(reply);
+		paraLen=0;
+		fillScanCommandPara(0, "", 10, paraList, paraLen, SCAN_NOLOOP);
+		res = con->doRedisCommand(paraList, paraLen, &reply);
+		if(res)
+		{
+			PrintRedisReplyPre(reply, 0);		
+			freeReplyObject(reply);
+		}
+		else
+		{
+			LOG_WRITE_ERROR("parse scan command reply failed");
+		}
+		freeCommandList(paraList);
 	}
-	else
-	{
-		LOG_WRITE_ERROR("parse scan command reply failed");
-	}
-	freeCommandList(paraList);
 
 	// 1.2 set
+	{
+		std::string key="norahtestkey";
+		std::string value="norahvalue";
+		paraLen=0;
+		fillCommandPara("set", 3, paraList);
+		paraLen += 15;
+		fillCommandPara(key.c_str(), key.length(), paraList);
+		paraLen += key.length() + 20;
+		fillCommandPara(value.c_str(), value.size(), paraList);
+		paraLen += value.size() + 20;
+		res = con->doRedisCommand(paraList, paraLen, &reply);
+		if(res)
+		{
+			PrintRedisReplyPre(reply, 0);		
+			freeReplyObject(reply);
+		}
+		else
+		{
+			LOG_WRITE_ERROR("parse set command reply failed");
+		}
+		freeCommandList(paraList);
+	}
 
 	// 1.3 get
+	{
+		std::string key="norahkey";
+		paraLen = 0; 
+		fillCommandPara("get", 3, paraList);
+		paraLen += 15;
+		fillCommandPara(key.c_str(), key.length(), paraList);
+		paraLen += key.length() + 20;	
+		res = con->doRedisCommand(paraList, paraLen, &reply);
+		if(res)
+		{
+			PrintRedisReplyPre(reply, 0);		
+			freeReplyObject(reply);
+		}
+		else
+		{
+			LOG_WRITE_ERROR("parse get command reply failed");
+		}
+		freeCommandList(paraList);
+	}
 
 	// 1.4 keys *	
-	fillCommandPara("keys", 4, paraList);
-    paraLen += 15;
-    string key = "*"; 
-    fillCommandPara(key.c_str(), key.length(), paraList);
-    paraLen += key.length() + 20;
-	res = con->doRedisCommand(paraList, paraLen, &reply);
-	if(res)
-    {
-        PrintRedisReplyPre(reply, 0);
-        freeReplyObject(reply);
-    }
-    else
-    {
-        LOG_WRITE_ERROR("parse scan command reply failed");
-    }
-    freeCommandList(paraList);
+	{
+		paraLen=0;
+		fillCommandPara("keys", 4, paraList);
+		paraLen += 15;
+		string key = "*"; 
+		fillCommandPara(key.c_str(), key.length(), paraList);
+		paraLen += key.length() + 20;
+		res = con->doRedisCommand(paraList, paraLen, &reply);
+		if(res)
+		{
+			PrintRedisReplyPre(reply, 0);
+			freeReplyObject(reply);
+		}
+		else
+		{
+			LOG_WRITE_ERROR("parse scan command reply failed");
+		}
+		freeCommandList(paraList);
+	}
 
 	return true;
 }
